@@ -5,7 +5,7 @@ sensor value is insert to mariadb table by some interval.
 
 ## Environment
 
-golang 1.19.1 - [Download and install - Go](https://go.dev/doc/install)
+golang 1.20.2 - [Download and install - Go](https://go.dev/doc/install)
 
 ## Clone
 
@@ -13,6 +13,7 @@ golang 1.19.1 - [Download and install - Go](https://go.dev/doc/install)
 $ git clone https://github.com/sangwon-jung-work/homelogger.git
 $ cd homelogger/src
 $ go mod tidy
+$ go get -u (already downloaded, use it as needed)
 ```
 
 ## Check before Run or Build
@@ -30,6 +31,9 @@ src/HomeLogger.go
 ## Install system service and Auto start on Boot
 
 ```
+$ cd homelogger/src
+$ go build HomeLogger.go
+
 $ sudo nano /lib/systemd/system/homelogger.service
 
 [Unit]
