@@ -104,7 +104,11 @@ func dbConnection() (*sql.DB, error) {
 	// Create the database handle
 	db, err := sql.Open("mysql", "user:password_without_escape@tcp(ip:port)/database?tls=false")
 	if err != nil {
-		log.Printf("Error %s when opening DB\n", err)
+		log.Printf("Fail sql.Open : %s", err)
+
+		if chk := sendLineMsg(fmt.Sprintf("Fail sql.Open : %s", err)); !chk {
+			log.Printf("Errors when sql Open sendLineMsg")
+		}
 		return nil, err
 	}
 	//defer db.Close()
@@ -118,7 +122,11 @@ func dbConnection() (*sql.DB, error) {
 	defer cancelfunc()
 	err = db.PingContext(ctx)
 	if err != nil {
-		log.Printf("Error %s pinging DB", err)
+		log.Printf("Fail db.PingContext : %s", err)
+
+		if chk := sendLineMsg(fmt.Sprintf("Fail db.PingContext : %s", err)); !chk {
+			log.Printf("Errors when PingContext sendLineMsg")
+		}
 		return nil, err
 	}
 	log.Printf("Connected to database successfully!")
@@ -145,7 +153,7 @@ func insertData(db *sql.DB, data LoggerData) error {
 
 	stmt, err := db.PrepareContext(ctx, query)
 	if err != nil {
-		log.Printf("Error %s when preparing SQL statement", err)
+		log.Printf("Error PrepareContext : %s", err)
 		return err
 	}
 	defer stmt.Close()
@@ -153,13 +161,13 @@ func insertData(db *sql.DB, data LoggerData) error {
 	// set params for insert query
 	res, err := stmt.ExecContext(ctx, data.temperature, data.humidity, data.pressure, data.raw_temperature, data.raw_humidity, data.raw_pressure, data.device_name)
 	if err != nil {
-		log.Printf("Error %s when inserting row into logger table", err)
+		log.Printf("Error ExecContext : %s", err)
 		return err
 	}
 
 	rows, err := res.RowsAffected()
 	if err != nil {
-		log.Printf("Error %s when finding rows affected", err)
+		log.Printf("Error RowsAffected : %s", err)
 		return err
 	}
 
@@ -175,12 +183,7 @@ func main() {
 	// get connection
 	db, err := dbConnection()
 	if err != nil {
-
-		if chk := sendLineMsg(fmt.Sprintf("unable to use data source! %s", err)); !chk {
-			log.Printf("Errors when sendLineMsg")
-		}
-
-		log.Fatal("unable to use data source!", err)
+		log.Fatal("Fail dbConnection!", err)
 	}
 	defer db.Close()
 
@@ -189,7 +192,7 @@ func main() {
 	if err != nil {
 
 		if chk := sendLineMsg(fmt.Sprintf("i2c open fail! %s", err)); !chk {
-			log.Printf("Errors when sendLineMsg")
+			log.Printf("Errors when i2c Open sendLineMsg")
 		}
 
 		log.Fatal("i2c open fail!", err)
@@ -200,10 +203,10 @@ func main() {
 		// Check if connection is active
 		err = db.Ping()
 		if err != nil {
-			log.Printf("connection is invalid. error msg %s", err)
+			log.Printf("Fail db.Ping : %s", err)
 
-			if chk := sendLineMsg("connection is invalid. will reconnect."); !chk {
-				log.Printf("Errors when sendLineMsg")
+			if chk := sendLineMsg("Fail db.Ping. will reconnect."); !chk {
+				log.Printf("Errors when db Ping sendLineMsg")
 			}
 
 			// reconnection
@@ -217,7 +220,7 @@ func main() {
 
 		if err != nil {
 			if chk := sendLineMsg("Error when init bme280"); !chk {
-				log.Printf("Errors when sendLineMsg")
+				log.Printf("Errors when bme EnvData sendLineMsg")
 			}
 			//panic(err)
 		}
@@ -238,10 +241,10 @@ func main() {
 
 		err = insertData(db, loggerData)
 		if err != nil {
-			log.Printf("Insert logger data failed with error %s", err)
+			log.Printf("Fail insertData : %s", err)
 
-			if chk := sendLineMsg(fmt.Sprintf("Insert logger data failed with error %s", err)); !chk {
-				log.Printf("Errors when sendLineMsg")
+			if chk := sendLineMsg(fmt.Sprintf("Fail insertData : %s", err)); !chk {
+				log.Printf("Errors when insertData sendLineMsg")
 			}
 		}
 
