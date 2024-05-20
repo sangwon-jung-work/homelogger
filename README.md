@@ -5,7 +5,7 @@ sensor value is insert to mariadb table by some interval.
 
 ## Environment
 
-golang 1.20.2 - [Download and install - Go](https://go.dev/doc/install)
+golang 1.22.3 - [Download and install - Go](https://go.dev/doc/install)
 
 ## Clone
 
