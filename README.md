@@ -5,7 +5,7 @@ sensor value is insert to mariadb table by some interval.
 
 ## Environment
 
-golang 1.22.3 - [Download and install - Go](https://go.dev/doc/install)
+golang 1.24.4 - [Download and install - Go](https://go.dev/doc/install)
 
 ## Clone
 
@@ -24,7 +24,7 @@ src/HomeLogger.go
 
 - dbConnection: Database type, connection url. (if necessary, connection options like MaxIdleConns)
 
-- sendLineMsg: Line notify access token. Please see this site [Line Notify](https://notify-bot.line.me/) (not required)
+- sendMsg: Discord webhook url. Please see this site [Intro to Webhooks](https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks)
 
 - main: device_name (not required)
 
