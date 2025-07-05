@@ -21,6 +21,7 @@ const (
 	wait_minute      = 5     // time.Sleep interval
 	sql_wait_second  = 5     // context sql execute wait timeout
 	active_debug_log = false // some debug log handling(insert count, bme280 values)
+  discord_url_app  = ""    // discord webhook url
 )
 
 // Insert logger data
@@ -34,64 +35,51 @@ type LoggerData struct {
 	raw_pressure    string
 }
 
-// Line notify server response
-type MessageResponse struct {
-	Status  int    `json:"status"`
-	Message string `json:"message"`
+// discord message Request json
+type MessageRequest struct {
+	Content  string `json:"content,omitempty"`
+	Username string `json:"username,omitempty"`
 }
 
-// Send line notify message(new token required)
-func sendLineMsg(message string) bool {
-	url := "https://notify-api.line.me/api/notify"
+// Send notify message (Discord)
+func sendNotify(servicename string, message string) bool {
+	body := new(bytes.Buffer)
 
-	body := []byte(fmt.Sprintf("message=" + message))
+	sendData := MessageRequest{
+		Content:  message,
+		Username: servicename,
+	}
 
-	// Create a HTTP post request
-	r, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
+	err := json.NewEncoder(body).Encode(sendData)
 	if err != nil {
-		log.Printf("Error %s when send line message\n", err)
+		log.Printf("Error %s when send message\n", err)
 		return false
 	}
 
-	// set line auth token header
-	r.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	r.Header.Add("Authorization", "Bearer (your token text))") // new token required
-
-	client := &http.Client{}
-	res, err := client.Do(r)
+	// Create a HTTP post request
+	response, err := http.Post(discord_url_app, "application/json", body)
 	if err != nil {
-		panic(err)
+		log.Printf("Error %s when send message\n", err)
+		return false
 	}
 
-	defer res.Body.Close()
+	// if response non 200, 204
+	if response.StatusCode != http.StatusOK && response.StatusCode != http.StatusNoContent {
+		defer response.Body.Close()
 
-	if res.StatusCode == http.StatusOK {
-
-		bodyBytes, err := io.ReadAll(res.Body)
+		bodyBytes, err := io.ReadAll(response.Body)
 		if err != nil {
 			log.Fatal("error when ReadAll", err)
 		}
 
 		bodyString := string(bodyBytes)
-		log.Printf("res.Body is %s \n", bodyString)
+		log.Printf("Response not 200 or 204. server return %s \n", bodyString)
 
-		rdata := MessageResponse{}
-		derr := json.Unmarshal([]byte(bodyString), &rdata)
-		if derr != nil {
-			log.Printf("Error %s when decode response message\n", derr)
-			return false
-		}
-
-		log.Printf("Response StatusCode is %d\n", rdata.Status)
-
-		if rdata.Status != http.StatusOK {
-			log.Printf("StatusCode %d when response status code\n", rdata.Status)
-			return false
-		}
+		return false
 
 	} else {
-		log.Printf("StatusCode %d when request message\n", res.StatusCode)
-		return false
+		// if response 200, 204 (normal)
+		log.Printf("StatusCode %d when request message\n", response.StatusCode)
 	}
 
 	return true
@@ -106,8 +94,8 @@ func dbConnection() (*sql.DB, error) {
 	if err != nil {
 		log.Printf("Fail sql.Open : %s", err)
 
-		if chk := sendLineMsg(fmt.Sprintf("Fail sql.Open : %s", err)); !chk {
-			log.Printf("Errors when sql Open sendLineMsg")
+		if chk := sendNotify("homelogger", fmt.Sprintf("Fail sql.Open : %s", err)); !chk {
+			log.Printf("Errors when sql Open sendNotify")
 		}
 		return nil, err
 	}
@@ -124,8 +112,8 @@ func dbConnection() (*sql.DB, error) {
 	if err != nil {
 		log.Printf("Fail db.PingContext : %s", err)
 
-		if chk := sendLineMsg(fmt.Sprintf("Fail db.PingContext : %s", err)); !chk {
-			log.Printf("Errors when PingContext sendLineMsg")
+		if chk := sendNotify("homelogger", fmt.Sprintf("Fail db.PingContext : %s", err)); !chk {
+			log.Printf("Errors when PingContext sendNotify")
 		}
 		return nil, err
 	}
@@ -191,8 +179,8 @@ func main() {
 	device, err := i2c.Open(&i2c.Devfs{Dev: "/dev/i2c-1"}, bme280.I2CAddr)
 	if err != nil {
 
-		if chk := sendLineMsg(fmt.Sprintf("i2c open fail! %s", err)); !chk {
-			log.Printf("Errors when i2c Open sendLineMsg")
+		if chk := sendNotify("homelogger", fmt.Sprintf("i2c open fail! %s", err)); !chk {
+			log.Printf("Errors when i2c Open sendNotify")
 		}
 
 		log.Fatal("i2c open fail!", err)
@@ -205,8 +193,8 @@ func main() {
 		if err != nil {
 			log.Printf("Fail db.Ping : %s", err)
 
-			if chk := sendLineMsg("Fail db.Ping. will reconnect."); !chk {
-				log.Printf("Errors when db Ping sendLineMsg")
+			if chk := sendNotify("homelogger", "Fail db.Ping. will reconnect."); !chk {
+				log.Printf("Errors when db Ping sendNotify")
 			}
 
 			// reconnection
@@ -219,8 +207,8 @@ func main() {
 		temp, press, hum, err := bme.EnvData()
 
 		if err != nil {
-			if chk := sendLineMsg("Error when init bme280"); !chk {
-				log.Printf("Errors when bme EnvData sendLineMsg")
+			if chk := sendNotify("homelogger", "Error when init bme280"); !chk {
+				log.Printf("Errors when bme EnvData sendNotify")
 			}
 			//panic(err)
 		}
@@ -243,8 +231,8 @@ func main() {
 		if err != nil {
 			log.Printf("Fail insertData : %s", err)
 
-			if chk := sendLineMsg(fmt.Sprintf("Fail insertData : %s", err)); !chk {
-				log.Printf("Errors when insertData sendLineMsg")
+			if chk := sendNotify("homelogger", fmt.Sprintf("Fail insertData : %s", err)); !chk {
+				log.Printf("Errors when insertData sendNotify")
 			}
 		}
 
